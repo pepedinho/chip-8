@@ -57,7 +57,8 @@ impl<'a> ContextPixels<'a> {
                 pixel[x as usize][y as usize]
                     .position
                     .set_y((y as i32) * (DIMPIXEL as i32));
-                pixel[x as usize][y as usize].color = 0;
+
+                pixel[x as usize][y as usize].color = BLACK;
             }
         }
 
