@@ -1,3 +1,5 @@
+use rand::random;
+
 use crate::display::schema::ContextPixels;
 
 use super::schema::{Jump, CPU, MEM_SIZE, NBR_OPCODE, START_ADRR};
@@ -32,9 +34,11 @@ impl CPU {
 
     pub fn interpreter(&mut self, opcode: u16, j: Jump, display: &mut ContextPixels) {
         // recuperation des sous partie de lopcode
-        let b3 = (opcode & (0x0F00)) >> 8; // on prend les 4 bits, b3 représente X
-        let b2 = (opcode & (0x00F0)) >> 4; // idem, b2 représente Y
-        let b1 = opcode & (0x000F); // on prend les 4 bits de poids faible
+        let b3 = ((opcode & (0x0F00)) >> 8) as u8; // on prend les 4 bits, b3 représente X
+        let b2 = ((opcode & (0x00F0)) >> 4) as u8; // idem, b2 représente Y
+        let b1 = (opcode & (0x000F)) as u8; // on prend les 4 bits de poids faible
+        let nnn = opcode & 0x0FFF; // les 12 dernier bits | 4 premier = [numeros d'instruction (2)] | 12 dernier = [adrr]
+        let kk = (opcode & 0x00FF) as u8; // les 8 derniers bits
 
         let b4 = j.get_action(opcode);
 
@@ -51,70 +55,114 @@ impl CPU {
                 self.pc = self.stack[self.sp as usize];
             }
             3 => {
-                let nnn = opcode & 0x0FFF; // les 12 dernier bits | 4 premier = [numeros d'instruction (2)] | 12 dernier = [adrr]
-                self.pc = nnn;
                 // 1NNN effectue un saut à l'adresse 1NNN.
+                self.pc = nnn;
             }
             4 => {
                 // 2NNN appelle le sous-programme en NNN, mais on revient ensuite.
+                if self.sp >= 16 {
+                    panic!("Stack overflow: trop d'appels de sous-programmes");
+                }
+
+                self.stack[self.sp as usize] = self.pc;
+                self.sp += 1;
+                self.pc = nnn;
             }
             5 => {
-                // 3XNN saute l'instruction suivante si VX est égal à NN.
+                // 3XKK saute l'instruction suivante si VX est égal à KK.
+                if self.V[b3 as usize] == kk {
+                    self.pc += 2;
+                }
             }
             6 => {
-                // 4XNN saute l'instruction suivante si VX et NN ne sont pas égaux.
+                // 4XKK saute l'instruction suivante si VX et KK ne sont pas égaux.
+                if self.V[b3 as usize] != kk {
+                    self.pc += 2;
+                }
             }
             7 => {
                 // 5XY0 saute l'instruction suivante si VX et VY sont égaux.
+                if self.V[b3 as usize] == self.V[b2 as usize] {
+                    self.pc += 2;
+                }
             }
             8 => {
-                // 6XNN définit VX à NN.
+                // 6XNN définit VX à KK.
+                self.V[b3 as usize] = kk;
             }
             9 => {
-                // 7XNN ajoute NN à VX.
+                // 7XKK ajoute KK à VX.
+                self.V[b3 as usize] = self.V[b3 as usize].wrapping_add(kk); // additione et evite
+                                                                            // l'overflow
             }
             10 => {
                 // 8XY0 définit VX à la valeur de VY.
+                self.V[b3 as usize] = self.V[b2 as usize];
             }
             11 => {
                 // 8XY1 définit VX à VX OR VY.
+                self.V[b3 as usize] = self.V[b3 as usize] | self.V[b2 as usize];
             }
             12 => {
                 // 8XY2 définit VX à VX AND VY.
+                self.V[b3 as usize] = self.V[b3 as usize] & self.V[b2 as usize];
             }
             13 => {
                 // 8XY3 définit VX à VX XOR VY.
+                self.V[b3 as usize] = self.V[b3 as usize] ^ self.V[b2 as usize];
             }
             14 => {
                 // 8XY4 ajoute VY à VX. VF est mis à 1 quand il y a un dépassement de mémoire (carry), et à 0 quand il n'y en pas.
+                let (result, carry) = self.V[b3 as usize].overflowing_add(self.V[b2 as usize]);
+                self.V[b3 as usize] = result;
+                self.V[0xF] = if carry { 1 } else { 0 };
             }
             15 => {
                 // 8XY5 VY est soustraite de VX. VF est mis à 0 quand il y a un emprunt, et à 1 quand il n'y a en pas.
+                let (result, borrow) = self.V[b3 as usize].overflowing_sub(self.V[b2 as usize]);
+                self.V[b3 as usize] = result;
+                self.V[0xF] = if borrow { 0 } else { 1 };
             }
             16 => {
                 // 8XY6 décale (shift) VX à droite de 1 bit. VF est fixé à la valeur du bit de poids faible de VX avant le décalage.
+                self.V[0xF] = self.V[b3 as usize] & 0x1;
+
+                self.V[b3 as usize] = self.V[b3 as usize] >> 1;
             }
             17 => {
                 // 8XY7 VX = VY - VX. VF est mis à 0 quand il y a un emprunt et à 1 quand il n'y en a pas.
+                let (result, borrow) = self.V[b2 as usize].overflowing_sub(self.V[b3 as usize]);
+                self.V[b3 as usize] = result;
+                self.V[0xF] = if borrow { 0 } else { 1 };
             }
             18 => {
                 // 8XYE décale (shift) VX à gauche de 1 bit. VF est fixé à la valeur du bit de poids fort de VX avant le décalage.
+                self.V[0xF] = (self.V[b3 as usize] >> 7) & 0x1;
+
+                self.V[b3 as usize] = self.V[b3 as usize] << 1;
             }
             19 => {
                 // 9XY0 saute l'instruction suivante si VX et VY ne sont pas égaux.
+                if self.V[b3 as usize] != self.V[b2 as usize] {
+                    self.pc += 2;
+                }
             }
             20 => {
                 // ANNN affecte NNN à I.
+                self.I = nnn;
             }
             21 => {
                 // BNNN passe à l'adresse NNN + V0.
+                self.pc = self.V[0] as u16 + nnn;
             }
             22 => {
                 // CXNN définit VX à un nombre aléatoire inférieur à NN.
+                let r: u8 = random();
+                self.V[b3 as usize] = r & kk;
             }
             23 => {
                 // DXYN dessine un sprite aux coordonnées (VX, VY).
-                // display.draw_pixel(b1, b2, b3);
+                display.draw_screen(b1, b2, b3, self);
             }
             24 => {
                 // EX9E saute l'instruction suivante si la clé stockée dans VX est pressée.
