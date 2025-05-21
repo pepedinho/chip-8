@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use cpu::schema::MEM_SIZE;
+use cpu::schema::{Jump, MEM_SIZE};
 use display::schema::{ContextPixels, DIMPIXEL, HEIGHT, WIDHT};
 use sdl2::{event::Event, keyboard::Keycode};
 
@@ -29,6 +29,7 @@ fn main() -> Result<(), String> {
 
     let mut ctx = ContextPixels::init(canvas, &texture_creator);
 
+    let j = Jump::new();
     'running: loop {
         for event in event_pump.poll_iter() {
             match event {

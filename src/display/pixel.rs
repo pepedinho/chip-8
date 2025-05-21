@@ -8,6 +8,8 @@ use sdl2::{
     Sdl,
 };
 
+use crate::cpu::schema::CPU;
+
 use super::schema::{ContextPixels, Pixel, BLACK, DIMPIXEL, H, W, WHITE};
 
 impl Pixel {
@@ -95,5 +97,33 @@ impl<'a> ContextPixels<'a> {
             }
         }
         self.screen.present();
+    }
+
+    pub fn draw_screen(&mut self, b1: u8, b2: u8, b3: u8, cpu: &mut CPU) {
+        let k: u8 = 0;
+
+        cpu.V[0xF] = 0;
+
+        for k in k..b1 {
+            let i: u16 = cpu.I + k as u16;
+            let encode = cpu.mem[i as usize]; // on recupere le codage de la ligne a dessiner
+            let y = ((cpu.V[b2 as usize] + k) as u32 % H) as u8; // on modulo pour ne jamais depasser;
+            let mut j = 0;
+            let mut shift = 7;
+            while j < 8 {
+                let x = ((cpu.V[b3 as usize] + j) as u32 % W) as u8; // on modulo pour ne jamais depasser;
+                j += 1;
+                shift -= 1;
+                if encode & (0x1 << shift) != 0 {
+                    //if withe
+                    if self.pixel[x as usize][y as usize].color == WHITE {
+                        self.pixel[x as usize][y as usize].color = BLACK;
+                        cpu.V[0xF] = 1;
+                    } else {
+                        self.pixel[x as usize][y as usize].color = WHITE;
+                    }
+                }
+            }
+        }
     }
 }
