@@ -4,6 +4,8 @@ use sdl2::surface::Surface;
 use sdl2::video::Window;
 use sdl2::video::WindowContext;
 
+use crate::cpu::schema::Keyboard;
+
 pub const BLACK: u8 = 0;
 pub const WHITE: u8 = 1;
 pub const W: u32 = 64; // nombre de pixels suivant la largeur
@@ -22,4 +24,5 @@ pub struct ContextPixels<'a> {
     pub screen: Canvas<Window>,
     pub textures: [Texture<'a>; 2],
     pub pixel: [[Pixel; H as usize]; W as usize],
+    pub keyboard: Keyboard,
 }

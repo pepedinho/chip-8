@@ -8,7 +8,7 @@ use sdl2::{
     Sdl,
 };
 
-use crate::cpu::schema::CPU;
+use crate::cpu::schema::{Keyboard, CPU};
 
 use super::schema::{ContextPixels, Pixel, BLACK, DIMPIXEL, H, W, WHITE};
 
@@ -68,6 +68,7 @@ impl<'a> ContextPixels<'a> {
             screen,
             textures: [tex_black, tex_white],
             pixel,
+            keyboard: Keyboard::new(),
         }
     }
 

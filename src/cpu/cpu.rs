@@ -1,8 +1,8 @@
 use rand::random;
 
-use crate::display::schema::ContextPixels;
+use crate::display::{self, schema::ContextPixels};
 
-use super::schema::{Jump, CPU, MEM_SIZE, NBR_OPCODE, START_ADRR};
+use super::schema::{Jump, Keyboard, CPU, MEM_SIZE, NBR_OPCODE, START_ADRR};
 
 impl CPU {
     pub fn new() -> Self {
@@ -39,6 +39,7 @@ impl CPU {
         let b1 = (opcode & (0x000F)) as u8; // on prend les 4 bits de poids faible
         let nnn = opcode & 0x0FFF; // les 12 dernier bits | 4 premier = [numeros d'instruction (2)] | 12 dernier = [adrr]
         let kk = (opcode & 0x00FF) as u8; // les 8 derniers bits
+        let mut can_iter = true;
 
         let b4 = j.get_action(opcode);
 
@@ -166,15 +167,39 @@ impl CPU {
             }
             24 => {
                 // EX9E saute l'instruction suivante si la clé stockée dans VX est pressée.
+                let key = self.V[b3 as usize];
+
+                if display.keyboard.ispressed(key) {
+                    self.pc += 2;
+                }
             }
             25 => {
                 // EXA1 saute l'instruction suivante si la clé stockée dans VX n'est pas pressée.
+                let key = self.V[b3 as usize];
+
+                if !display.keyboard.ispressed(key) {
+                    self.pc += 2;
+                }
             }
             26 => {
                 // FX07 définit VX à la valeur de la temporisation.
+                self.V[b3 as usize] = self.game_count;
             }
             27 => {
                 // FX0A attend l'appui sur une touche et la stocke ensuite dans VX.
+                can_iter = false;
+                if let Some(index) = display.keyboard.awaiting_key {
+                    for (i, &pressed) in display.keyboard.keys.iter().enumerate() {
+                        if pressed {
+                            self.V[index as usize] = i as u8;
+                            display.keyboard.awaiting_key = None;
+                            can_iter = true;
+                            break;
+                        }
+                    }
+                } else {
+                    display.keyboard.awaiting_key = Some(b3);
+                }
             }
             28 => {
                 // FX15 définit la temporisation à VX.
@@ -202,7 +227,9 @@ impl CPU {
             }
         }
 
-        self.pc += 2; // on avance l'index de 2 car chaque instruction prend une place de 2 cases
+        if can_iter {
+            self.pc += 2; // on avance l'index de 2 car chaque instruction prend une place de 2 cases
+        }
     }
 }
 
@@ -296,5 +323,49 @@ impl Jump {
             action += 1;
         }
         return action;
+    }
+}
+
+impl Keyboard {
+    pub fn new() -> Self {
+        Keyboard {
+            keys: [false; 16],
+            awaiting_key: None,
+        }
+    }
+
+    pub fn set_key(&mut self, key: u8, pressed: bool) {
+        if key < 16 {
+            self.keys[key as usize] = pressed;
+        }
+    }
+    pub fn ispressed(&self, key: u8) -> bool {
+        if key < 16 {
+            self.keys[key as usize]
+        } else {
+            false
+        }
+    }
+
+    pub fn map_sdl_key_to_chip8(keycode: sdl2::keyboard::Keycode) -> Option<u8> {
+        match keycode {
+            sdl2::keyboard::Keycode::Num1 => Some(0x1),
+            sdl2::keyboard::Keycode::Num2 => Some(0x2),
+            sdl2::keyboard::Keycode::Num3 => Some(0x3),
+            sdl2::keyboard::Keycode::Num4 => Some(0xC),
+            sdl2::keyboard::Keycode::Q => Some(0x4),
+            sdl2::keyboard::Keycode::W => Some(0x5),
+            sdl2::keyboard::Keycode::E => Some(0x6),
+            sdl2::keyboard::Keycode::R => Some(0xD),
+            sdl2::keyboard::Keycode::A => Some(0x7),
+            sdl2::keyboard::Keycode::S => Some(0x8),
+            sdl2::keyboard::Keycode::D => Some(0x9),
+            sdl2::keyboard::Keycode::F => Some(0xE),
+            sdl2::keyboard::Keycode::Z => Some(0xA),
+            sdl2::keyboard::Keycode::X => Some(0x0),
+            sdl2::keyboard::Keycode::C => Some(0xB),
+            sdl2::keyboard::Keycode::V => Some(0xF),
+            _ => None,
+        }
     }
 }

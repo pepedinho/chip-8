@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use cpu::schema::{Jump, MEM_SIZE};
+use cpu::schema::{Jump, Keyboard, MEM_SIZE};
 use display::schema::{ContextPixels, DIMPIXEL, HEIGHT, WIDHT};
 use sdl2::{event::Event, keyboard::Keycode};
 
@@ -38,6 +38,22 @@ fn main() -> Result<(), String> {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => break 'running,
+                Event::KeyDown {
+                    keycode: Some(keycode),
+                    ..
+                } => {
+                    if let Some(chip8_key) = Keyboard::map_sdl_key_to_chip8(keycode) {
+                        ctx.keyboard.set_key(chip8_key, true);
+                    }
+                }
+                sdl2::event::Event::KeyUp {
+                    keycode: Some(keycode),
+                    ..
+                } => {
+                    if let Some(chip8_key) = Keyboard::map_sdl_key_to_chip8(keycode) {
+                        ctx.keyboard.set_key(chip8_key, false);
+                    }
+                }
                 _ => {}
             }
         }

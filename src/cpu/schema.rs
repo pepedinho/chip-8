@@ -18,3 +18,8 @@ pub struct Jump {
     pub mask: [u16; NBR_OPCODE],
     pub id: [u16; NBR_OPCODE],
 }
+
+pub struct Keyboard {
+    pub keys: [bool; 16],
+    pub awaiting_key: Option<u8>,
+}
