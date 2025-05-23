@@ -1,7 +1,7 @@
 pub const MEM_SIZE: usize = 4096;
-pub const START_ADRR: usize = 512;
+pub const START_ADRR: usize = 0x200;
 pub const NBR_OPCODE: usize = 35;
-pub const CPU_SPEED: usize = 4;
+pub const CPU_SPEED: usize = 10;
 
 pub const CHIP8_FONTSET: [u8; 80] = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0

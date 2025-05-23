@@ -1,7 +1,7 @@
 use std::{env::args, time::Duration};
 
-use cpu::schema::{Jump, Keyboard, CPU, CPU_SPEED, MEM_SIZE};
-use display::schema::{ContextPixels, DIMPIXEL, HEIGHT, WIDHT};
+use cpu::schema::{Jump, Keyboard, CPU, CPU_SPEED};
+use display::schema::{ContextPixels, HEIGHT, WIDHT};
 use sdl2::{event::Event, keyboard::Keycode};
 
 mod cpu;
@@ -54,6 +54,7 @@ fn main() -> Result<(), String> {
                     ..
                 } => {
                     if let Some(chip8_key) = Keyboard::map_sdl_key_to_chip8(keycode) {
+                        println!("Key pressed: {:?}, CHIP-8 code: {:?}", keycode, chip8_key);
                         ctx.keyboard.set_key(chip8_key, true);
                     } else {
                         println!("touche => [{}] n'existe pas sur chip-8", keycode);

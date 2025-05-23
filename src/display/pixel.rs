@@ -3,12 +3,10 @@ use sdl2::{
     rect::Rect,
     render::{Canvas, TextureCreator},
     surface::Surface,
-    sys::{SDL_FillRect, SDL_blit},
     video::{Window, WindowContext},
-    Sdl,
 };
 
-use crate::cpu::schema::{Keyboard, CPU};
+use crate::cpu::schema::{Keyboard, CPU, MEM_SIZE};
 
 use super::schema::{ContextPixels, Pixel, BLACK, DIMPIXEL, H, W, WHITE};
 
@@ -46,10 +44,8 @@ impl<'a> ContextPixels<'a> {
             .expect("Erreur texture blanche");
 
         // Initialisation pixels
-        let mut pixel = [[Pixel {
-            position: Rect::new(0, 0, DIMPIXEL as u32, DIMPIXEL as u32),
-            color: 0,
-        }; H as usize]; W as usize];
+        let mut pixel = [[Pixel::new(Rect::new(0, 0, DIMPIXEL as u32, DIMPIXEL as u32));
+            H as usize]; W as usize];
 
         for x in 0..W {
             for y in 0..H {
@@ -100,30 +96,29 @@ impl<'a> ContextPixels<'a> {
         self.screen.present();
     }
 
-    pub fn draw_screen(&mut self, b1: u8, b2: u8, b3: u8, cpu: &mut CPU) {
+    pub fn draw_screen(&mut self, n: u8, x: u8, y: u8, cpu: &mut CPU) {
         //let k: u8 = 0;
 
         cpu.V[0xF] = 0;
 
-        for k in 0..b1 {
-            let i: u16 = cpu.I + k as u16;
-            let encode = cpu.mem[i as usize]; // on recupere le codage de la ligne a dessiner
-            let y = ((cpu.V[b2 as usize] + k) as u32 % H) as u8; // on modulo pour ne jamais depasser;
-            let mut j = 0;
-            let mut shift = 7;
-            while j < 8 {
-                let x = ((cpu.V[b3 as usize] + j) as u32 % W) as u8; // on modulo pour ne jamais depasser;
-                if encode & (0x1 << shift) != 0 {
-                    //if white
-                    if self.pixel[x as usize][y as usize].color == WHITE {
-                        self.pixel[x as usize][y as usize].color = BLACK;
-                        cpu.V[0xF] = 1;
-                    } else {
-                        self.pixel[x as usize][y as usize].color = WHITE;
+        for byte_index in 0..n {
+            let sprite_addr = cpu.I.wrapping_add(byte_index as u16);
+            if sprite_addr as usize > MEM_SIZE {
+                break;
+            }
+            let sprite_byte = cpu.mem[sprite_addr as usize];
+            let y_pos = ((cpu.V[y as usize] as usize + byte_index as usize) % H as usize) as usize;
+
+            for bit_index in 0..8 {
+                let x_pos = ((cpu.V[x as usize] as usize + bit_index) % W as usize) as usize;
+
+                let bit = (sprite_byte >> (7 - bit_index)) & 1;
+                if bit == 1 {
+                    if self.pixel[x_pos][y_pos].color == WHITE {
+                        cpu.V[0xF] = 1; // colision
                     }
+                    self.pixel[x_pos][y_pos].color ^= 1;
                 }
-                j += 1;
-                shift -= 1;
             }
         }
     }
