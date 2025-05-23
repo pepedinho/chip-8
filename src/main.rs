@@ -1,6 +1,6 @@
-use std::time::Duration;
+use std::{env::args, time::Duration};
 
-use cpu::schema::{Jump, Keyboard, MEM_SIZE};
+use cpu::schema::{Jump, Keyboard, CPU, CPU_SPEED, MEM_SIZE};
 use display::schema::{ContextPixels, DIMPIXEL, HEIGHT, WIDHT};
 use sdl2::{event::Event, keyboard::Keycode};
 
@@ -28,6 +28,17 @@ fn main() -> Result<(), String> {
     let mut event_pump = sdl_context.event_pump()?;
 
     let mut ctx = ContextPixels::init(canvas, &texture_creator);
+    let mut cpu = CPU::new();
+
+    let args: Vec<String> = args().collect();
+    match cpu.load_game(&args[1]) {
+        Ok(()) => println!("Game was loaded succesfully !"),
+        Err(e) => {
+            println!("An error has occured during loading game : {}", e);
+            return Ok(());
+        }
+    }
+    cpu.init_memory(); //mapper la police
 
     let j = Jump::new();
     'running: loop {
@@ -44,6 +55,8 @@ fn main() -> Result<(), String> {
                 } => {
                     if let Some(chip8_key) = Keyboard::map_sdl_key_to_chip8(keycode) {
                         ctx.keyboard.set_key(chip8_key, true);
+                    } else {
+                        println!("touche => [{}] n'existe pas sur chip-8", keycode);
                     }
                 }
                 sdl2::event::Event::KeyUp {
@@ -58,7 +71,13 @@ fn main() -> Result<(), String> {
             }
         }
 
+        for _ in 0..CPU_SPEED {
+            let opcode = cpu.get_opcode();
+            cpu.interpret(opcode, &j, &mut ctx);
+        }
+
         ctx.update_screen();
+        cpu.countdown();
 
         std::thread::sleep(Duration::from_millis(16));
     }

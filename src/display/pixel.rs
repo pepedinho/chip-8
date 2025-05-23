@@ -113,8 +113,6 @@ impl<'a> ContextPixels<'a> {
             let mut shift = 7;
             while j < 8 {
                 let x = ((cpu.V[b3 as usize] + j) as u32 % W) as u8; // on modulo pour ne jamais depasser;
-                j += 1;
-                shift -= 1;
                 if encode & (0x1 << shift) != 0 {
                     //if withe
                     if self.pixel[x as usize][y as usize].color == WHITE {
@@ -124,6 +122,8 @@ impl<'a> ContextPixels<'a> {
                         self.pixel[x as usize][y as usize].color = WHITE;
                     }
                 }
+                j += 1;
+                shift -= 1;
             }
         }
     }

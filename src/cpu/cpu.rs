@@ -1,8 +1,15 @@
+use std::{
+    fs::File,
+    io::{self, Read},
+    result,
+};
+
 use rand::random;
+use sdl2::libc::memmove;
 
 use crate::display::{self, schema::ContextPixels};
 
-use super::schema::{Jump, Keyboard, CPU, MEM_SIZE, NBR_OPCODE, START_ADRR};
+use super::schema::{Jump, Keyboard, CHIP8_FONTSET, CPU, MEM_SIZE, NBR_OPCODE, START_ADRR};
 
 impl CPU {
     pub fn new() -> Self {
@@ -10,11 +17,17 @@ impl CPU {
             mem: [0u8; MEM_SIZE],
             V: [0u8; 16],
             stack: [0u16; 16],
-            pc: START_ADRR,
+            pc: START_ADRR as u16,
             sp: 0,
             game_count: 0,
             sound_count: 0,
             I: 0,
+        }
+    }
+
+    pub fn init_memory(&mut self) {
+        for i in 0..CHIP8_FONTSET.len() {
+            self.mem[i] = CHIP8_FONTSET[i];
         }
     }
 
@@ -32,7 +45,7 @@ impl CPU {
             + self.mem[(self.pc + 1) as usize] as u16;
     }
 
-    pub fn interpreter(&mut self, opcode: u16, j: Jump, display: &mut ContextPixels) {
+    pub fn interpret(&mut self, opcode: u16, j: &Jump, display: &mut ContextPixels) {
         // recuperation des sous partie de lopcode
         let b3 = ((opcode & (0x0F00)) >> 8) as u8; // on prend les 4 bits, b3 représente X
         let b2 = ((opcode & (0x00F0)) >> 4) as u8; // idem, b2 représente Y
@@ -68,6 +81,7 @@ impl CPU {
                 self.stack[self.sp as usize] = self.pc;
                 self.sp += 1;
                 self.pc = nnn;
+                self.pc -= 2;
             }
             5 => {
                 // 3XKK saute l'instruction suivante si VX est égal à KK.
@@ -203,24 +217,47 @@ impl CPU {
             }
             28 => {
                 // FX15 définit la temporisation à VX.
+                self.game_count = self.V[b3 as usize];
             }
             29 => {
                 // FX18 définit la minuterie sonore à VX.
+                self.sound_count = self.V[b3 as usize];
             }
             30 => {
-                // FX1E ajoute à VX I. VF est mis à 1 quand il y a overflow (I+VX>0xFFF), et à 0 si tel n'est pas le cas.
+                // FX1E ajo ute à VX I. VF est mis à 1 quand il y a overflow (I+VX>0xFFF), et à 0 si tel n'est pas le cas.
+                let vx = self.V[b3 as usize] as u16;
+                let res = self.I + vx;
+
+                if res > 0x0FFF {
+                    self.V[0xF] = 1;
+                } else {
+                    self.V[0xF] = 0;
+                }
+                self.I = res;
             }
             31 => {
                 // FX29 définit I à l'emplacement du caractère stocké dans VX. Les caractères 0-F (en hexadécimal) sont représentés par une police 4x5.
+                let digit = self.V[b3 as usize] as u16;
+                self.I = digit * 5;
             }
             32 => {
                 // FX33 stocke dans la mémoire le code décimal représentant VX (dans I, I+1, I+2).
+                let value = self.V[b3 as usize];
+                self.mem[self.I as usize] = value / 100;
+                self.mem[(self.I + 1) as usize] = (value / 10) % 10;
+                self.mem[(self.I + 2) as usize] = value % 10;
             }
             33 => {
                 // FX55 stocke V0 à VX en mémoire à partir de l'adresse I.
+                for i in 0..=b3 {
+                    self.mem[(self.I + i as u16) as usize] = self.V[i as usize];
+                }
             }
             34 => {
                 // FX65 remplit V0 à VX avec les valeurs de la mémoire à partir de l'adresse I.
+                for i in 0..=b3 {
+                    self.V[i as usize] = self.mem[(self.I + i as u16) as usize];
+                }
             }
             _ => {
                 // Code non reconnu
@@ -230,6 +267,16 @@ impl CPU {
         if can_iter {
             self.pc += 2; // on avance l'index de 2 car chaque instruction prend une place de 2 cases
         }
+    }
+
+    pub fn load_game(&mut self, path: &str) -> io::Result<()> {
+        let mut game = File::open(path)?;
+        let mut buffer = Vec::new();
+        game.read_to_end(&mut buffer)?;
+
+        let end = START_ADRR + buffer.len();
+        self.mem[START_ADRR..end].copy_from_slice(&buffer);
+        Ok(())
     }
 }
 
