@@ -317,7 +317,7 @@ impl CPU {
             }
             _ => {
                 // Code non reconnu
-                println!("ERROR UNEXPECTED INSTRUCTION");
+                println!("ERROR UNEXPECTED INSTRUCTION => ");
             }
         }
 
