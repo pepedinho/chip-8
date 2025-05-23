@@ -101,11 +101,11 @@ impl<'a> ContextPixels<'a> {
     }
 
     pub fn draw_screen(&mut self, b1: u8, b2: u8, b3: u8, cpu: &mut CPU) {
-        let k: u8 = 0;
+        //let k: u8 = 0;
 
         cpu.V[0xF] = 0;
 
-        for k in k..b1 {
+        for k in 0..b1 {
             let i: u16 = cpu.I + k as u16;
             let encode = cpu.mem[i as usize]; // on recupere le codage de la ligne a dessiner
             let y = ((cpu.V[b2 as usize] + k) as u32 % H) as u8; // on modulo pour ne jamais depasser;
@@ -114,7 +114,7 @@ impl<'a> ContextPixels<'a> {
             while j < 8 {
                 let x = ((cpu.V[b3 as usize] + j) as u32 % W) as u8; // on modulo pour ne jamais depasser;
                 if encode & (0x1 << shift) != 0 {
-                    //if withe
+                    //if white
                     if self.pixel[x as usize][y as usize].color == WHITE {
                         self.pixel[x as usize][y as usize].color = BLACK;
                         cpu.V[0xF] = 1;
