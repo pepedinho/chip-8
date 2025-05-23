@@ -109,7 +109,6 @@ Mapped to your physical keyboard as:
 
 - `cpu.rs`: Implements the CPU, registers, stack, opcode interpretation, and timers.
 - `display.rs`: Handles pixel rendering, sprite drawing, and screen clearing.
-- `keyboard.rs`: Manages keyboard state, key presses/releases, and mapping from physical keys to CHIP-8 keys.
 - `main.rs`: Sets up the window, event loop, loads ROMs, and runs the CPU cycles.
 
 ---
@@ -133,19 +132,3 @@ This project helped me deepen my understanding of:
 - Event-driven input handling.
 - Graphics rendering with pixel buffers.
 - Rust ownership, borrowing, and safe concurrency.
-
----
-
-## Contributions 🤝
-
-Contributions, bug reports, and feature requests are welcome! Feel free to open issues or submit pull requests.
-
----
-
-## License ⚖️
-
-MIT License — see `LICENSE` file for details.
-
----
-
-If you want, I can also help generate a `Cargo.toml` example or setup instructions for SDL2 bindings in Rust. Let me know!
