@@ -30,8 +30,8 @@ fn main() -> Result<(), String> {
     let mut ctx = ContextPixels::init(canvas, &texture_creator);
     let mut cpu = CPU::new();
 
-    // let args: Vec<String> = args().collect();
-    match cpu.load_game("games/15PUZZLE.ch8") {
+    let args: Vec<String> = args().collect();
+    match cpu.load_game(&args[1]) {
         Ok(()) => println!("Game was loaded succesfully !"),
         Err(e) => {
             println!("An error has occured during loading game : {}", e);
@@ -54,10 +54,7 @@ fn main() -> Result<(), String> {
                     ..
                 } => {
                     if let Some(chip8_key) = Keyboard::map_sdl_key_to_chip8(keycode) {
-                        println!("Key pressed: {:?}, CHIP-8 code: {:?}", keycode, chip8_key);
                         ctx.keyboard.set_key(chip8_key, true);
-                    } else {
-                        println!("touche => [{}] n'existe pas sur chip-8", keycode);
                     }
                 }
                 sdl2::event::Event::KeyUp {

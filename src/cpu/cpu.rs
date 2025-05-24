@@ -54,18 +54,6 @@ impl CPU {
 
         let b4 = j.get_action(opcode);
 
-        println!(
-            "PC={:03X} I={:03X} Opcode={:04X} V={:?} SP={} Stack={:?} Action={}",
-            self.pc,
-            self.I,
-            opcode,
-            self.V,
-            self.sp,
-            &self.stack[..self.sp as usize],
-            b4
-        );
-
-        println!("PC={:03X} Opcode={:04X} b4={}", self.pc, opcode, b4);
         match b4 {
             0 => {}                      // opcode non implementer
             1 => display.clear_screen(), // efface l'ecran
@@ -217,20 +205,8 @@ impl CPU {
                 // EX9E saute l'instruction suivante si la clé stockée dans VX est pressée.
                 //println!("24");
                 let key = self.V[b3 as usize];
-                assert!(key < 16, "Key too big !");
-                println!("waiting for key => {}", key);
-                println!(
-                    "Vx={} Vy={} key[Vx]={} key[Vy]={} | X = {} | Y = {}",
-                    self.V[b3 as usize],
-                    self.V[b2 as usize],
-                    display.keyboard.ispressed(key),
-                    display.keyboard.ispressed(self.V[b2 as usize]),
-                    b3,
-                    b2
-                );
 
                 if display.keyboard.ispressed(key) {
-                    println!("Key {} pressed, skipping next instruction", key);
                     self.pc += 2;
                 }
             }
@@ -240,7 +216,6 @@ impl CPU {
                 let key = self.V[b3 as usize];
 
                 if !display.keyboard.ispressed(key) {
-                    println!("Key {} NOT pressed, skipping next instruction", key);
                     self.pc += 2;
                 }
             }
