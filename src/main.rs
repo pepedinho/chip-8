@@ -30,8 +30,8 @@ fn main() -> Result<(), String> {
     let mut ctx = ContextPixels::init(canvas, &texture_creator);
     let mut cpu = CPU::new();
 
-    let args: Vec<String> = args().collect();
-    match cpu.load_game(&args[1]) {
+    // let args: Vec<String> = args().collect();
+    match cpu.load_game("games/15PUZZLE.ch8") {
         Ok(()) => println!("Game was loaded succesfully !"),
         Err(e) => {
             println!("An error has occured during loading game : {}", e);

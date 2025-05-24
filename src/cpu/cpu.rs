@@ -5,6 +5,7 @@ use std::{
 
 use crate::display::schema::ContextPixels;
 use rand::random;
+use sdl2::libc::FAN_CLASS_CONTENT;
 
 use super::schema::{Jump, Keyboard, CHIP8_FONTSET, CPU, MEM_SIZE, NBR_OPCODE, START_ADRR};
 
@@ -82,6 +83,7 @@ impl CPU {
                 // 1NNN effectue un saut à l'adresse 1NNN.
                 //println!("3");
                 self.pc = nnn;
+                can_iter = false;
             }
             4 => {
                 // 2NNN appelle le sous-programme en NNN, mais on revient ensuite.
