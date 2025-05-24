@@ -43,22 +43,37 @@ This emulator aims to:
 
 1. Clone this repository:
 
-```bash
-git clone https://github.com/yourusername/chip8-emulator-rust.git
-cd chip8-emulator-rust
-```
+    ```bash
+    git clone https://github.com/pepedinho/chip8.git
+    cd chip8
+    ```
 
 2. Build the project:
 
-```bash
-cargo build --release
-```
+    ```bash
+    cargo build --release
+    ```
 
 3. Run with a CHIP-8 ROM file:
 
-```bash
-cargo run --release -- path/to/game.ch8
-```
+    ```bash
+    cargo run --release path/to/game.ch8
+    ```
+
+### Argument
+
+1. Change the ***CPU*** speed
+   
+   ```bash
+    cargo run --release path/to/game.ch8 --speed 10
+    ```
+
+3. Enable debug mode
+
+    ```bash
+    cargo run --release path/to/game.ch8 --debug
+    ```
+
 
 ---
 
