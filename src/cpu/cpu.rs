@@ -5,12 +5,11 @@ use std::{
 
 use crate::display::schema::ContextPixels;
 use rand::random;
-use sdl2::libc::FAN_CLASS_CONTENT;
 
 use super::schema::{Jump, Keyboard, CHIP8_FONTSET, CPU, MEM_SIZE, NBR_OPCODE, START_ADRR};
 
 impl CPU {
-    pub fn new() -> Self {
+    pub fn new(debug: bool) -> Self {
         CPU {
             mem: [0u8; MEM_SIZE],
             V: [0u8; 16],
@@ -20,6 +19,7 @@ impl CPU {
             game_count: 0,
             sound_count: 0,
             I: 0,
+            debug,
         }
     }
 
@@ -53,6 +53,21 @@ impl CPU {
         let mut can_iter = true;
 
         let b4 = j.get_action(opcode);
+
+        if self.debug {
+            println!(
+                "PC={:03X} I={:03X} Opcode={:04X} V={:?} SP={} Stack={:?} Action={} | X = {} | Y = {}",
+                self.pc,
+                self.I,
+                opcode,
+                self.V,
+                self.sp,
+                &self.stack[..self.sp as usize],
+                b4,
+                b3,
+                b2
+            );
+        }
 
         match b4 {
             0 => {}                      // opcode non implementer

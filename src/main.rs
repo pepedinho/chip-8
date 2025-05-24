@@ -1,5 +1,6 @@
 use std::{env::args, time::Duration};
 
+use clap::Parser;
 use cpu::schema::{Jump, Keyboard, CPU, CPU_SPEED};
 use display::schema::{ContextPixels, HEIGHT, WIDHT};
 use sdl2::{event::Event, keyboard::Keycode};
@@ -7,9 +8,20 @@ use sdl2::{event::Event, keyboard::Keycode};
 mod cpu;
 mod display;
 
+#[derive(Parser, Debug)]
+#[command(author, version, about = "Émulateur Chip-8 en Rust")]
+pub struct Config {
+    pub rom_path: String,
+    #[arg(short, long, default_value_t = CPU_SPEED)]
+    pub speed: usize,
+    #[arg(short, long, default_value_t = false)]
+    pub debug: bool,
+}
+
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
+    let config = Config::parse();
 
     let window = video_subsystem
         .window("Chip8", WIDHT, HEIGHT)
@@ -28,10 +40,9 @@ fn main() -> Result<(), String> {
     let mut event_pump = sdl_context.event_pump()?;
 
     let mut ctx = ContextPixels::init(canvas, &texture_creator);
-    let mut cpu = CPU::new();
+    let mut cpu = CPU::new(config.debug);
 
-    let args: Vec<String> = args().collect();
-    match cpu.load_game(&args[1]) {
+    match cpu.load_game(&config.rom_path) {
         Ok(()) => println!("Game was loaded succesfully !"),
         Err(e) => {
             println!("An error has occured during loading game : {}", e);
@@ -69,7 +80,7 @@ fn main() -> Result<(), String> {
             }
         }
 
-        for _ in 0..CPU_SPEED {
+        for _ in 0..config.speed {
             let opcode = cpu.get_opcode();
             cpu.interpret(opcode, &j, &mut ctx);
         }

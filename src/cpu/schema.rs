@@ -32,6 +32,7 @@ pub struct CPU {
     pub game_count: u8, // compteur pour la synchronisation
     pub sound_count: u8, // compteur pour le son
     pub pc: u16, // pour parcourir le tableau « mémoire »
+    pub debug: bool,
 }
 
 pub struct Jump {
