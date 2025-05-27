@@ -1,9 +1,10 @@
 use std::{
     fs::File,
     io::{self, Read},
+    sync::mpsc::Sender,
 };
 
-use crate::display::schema::ContextPixels;
+use crate::{display::schema::ContextPixels, Order};
 use rand::random;
 
 use super::schema::{Jump, Keyboard, CHIP8_FONTSET, CPU, MEM_SIZE, NBR_OPCODE, START_ADRR};
@@ -43,7 +44,13 @@ impl CPU {
             + self.mem[(self.pc + 1) as usize] as u16;
     }
 
-    pub fn interpret(&mut self, opcode: u16, j: &Jump, display: &mut ContextPixels) {
+    pub fn interpret(
+        &mut self,
+        opcode: u16,
+        j: &Jump,
+        display: &mut ContextPixels,
+        tx: &Sender<Order>,
+    ) {
         // recuperation des sous partie de lopcode
         let b3 = ((opcode & (0x0F00)) >> 8) as u8; // on prend les 4 bits, b3 représente X
         let b2 = ((opcode & (0x00F0)) >> 4) as u8; // idem, b2 représente Y
@@ -70,8 +77,10 @@ impl CPU {
         }
 
         match b4 {
-            0 => {}                      // opcode non implementer
-            1 => display.clear_screen(), // efface l'ecran
+            0 => {} // opcode non implementer
+            1 => {
+                tx.send(Order::Clear);
+            } // efface l'ecran
             2 => {
                 // 00EE revien du saut
                 //println!("2");
@@ -214,6 +223,7 @@ impl CPU {
             23 => {
                 // DXYN dessine un sprite aux coordonnées (VX, VY).
                 //println!("23");
+                // tx.send(Order::ReDraw);
                 display.draw_screen(b1, b3, b2, self);
             }
             24 => {

@@ -44,3 +44,9 @@ pub struct Keyboard {
     pub keys: [bool; 16],
     pub awaiting_key: Option<u8>,
 }
+
+pub struct CPUStateSnapchot {
+    pub V: [u8; 16],
+    pub I: u16,
+    pub mem: [u8; MEM_SIZE],
+}

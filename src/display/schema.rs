@@ -19,9 +19,12 @@ pub struct Pixel {
     pub dirty: bool, // sert q indiquer si il y a eu un changement d'etat du pixel
 }
 
-pub struct ContextPixels<'a> {
-    pub screen: Canvas<Window>,
-    pub textures: [Texture<'a>; 2],
+pub struct ContextPixels {
     pub pixel: [[Pixel; H as usize]; W as usize],
     pub keyboard: Keyboard,
+}
+
+pub struct Renderer<'a> {
+    pub screen: Canvas<Window>,
+    pub textures: [Texture<'a>; 2],
 }

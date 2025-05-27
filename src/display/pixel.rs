@@ -8,7 +8,7 @@ use sdl2::{
 
 use crate::cpu::schema::{Keyboard, CPU, MEM_SIZE};
 
-use super::schema::{ContextPixels, Pixel, BLACK, DIMPIXEL, H, W, WHITE};
+use super::schema::{ContextPixels, Pixel, Renderer, BLACK, DIMPIXEL, H, W, WHITE};
 
 impl Pixel {
     pub fn new(pos: Rect) -> Self {
@@ -32,12 +32,12 @@ impl Pixel {
     }
 }
 
-impl<'a> ContextPixels<'a> {
+impl<'a> Renderer<'a> {
+    // créer les surfaces et les convertir en textures
     pub fn init(
         screen: Canvas<Window>,
         texture_creator: &'a TextureCreator<WindowContext>,
     ) -> Self {
-        // créer les surfaces et les convertir en textures
         let mut surf_black =
             Surface::new(DIMPIXEL as u32, DIMPIXEL as u32, PixelFormatEnum::RGB24).unwrap();
         surf_black.fill_rect(None, Color::RGB(0, 0, 0)).unwrap();
@@ -56,6 +56,15 @@ impl<'a> ContextPixels<'a> {
             .create_texture_from_surface(&surf_white)
             .expect("Erreur texture blanche");
 
+        Self {
+            screen,
+            textures: [tex_black, tex_white],
+        }
+    }
+}
+
+impl ContextPixels {
+    pub fn init() -> Self {
         // Initialisation pixels
         let mut pixel = [[Pixel::new(Rect::new(0, 0, DIMPIXEL as u32, DIMPIXEL as u32));
             H as usize]; W as usize];
@@ -74,42 +83,41 @@ impl<'a> ContextPixels<'a> {
         }
 
         Self {
-            screen,
-            textures: [tex_black, tex_white],
             pixel,
             keyboard: Keyboard::new(),
         }
     }
 
-    pub fn draw_pixel(&mut self, pixel: &Pixel) {
-        let texture = &self.textures[pixel.color as usize];
+    pub fn draw_pixel(&mut self, pixel: &Pixel, renderer: &mut Renderer) {
+        let texture = &renderer.textures[pixel.color as usize];
 
-        self.screen
-            .copy(&texture, None, Some(pixel.position))
+        renderer
+            .screen
+            .copy(texture, None, Some(pixel.position))
             .expect("error during pixel render");
     }
 
-    pub fn clear_screen(&mut self) {
+    pub fn clear_screen(&mut self, renderer: &mut Renderer) {
         for x in 0..W {
             for y in 0..H {
                 self.pixel[x as usize][y as usize].color = BLACK;
             }
         }
 
-        self.screen.set_draw_color(Color::BLACK);
-        self.screen.clear();
+        renderer.screen.set_draw_color(Color::BLACK);
+        renderer.screen.clear();
     }
 
-    pub fn update_screen(&mut self) {
+    pub fn update_screen(&mut self, renderer: &mut Renderer) {
         for x in 0..W as usize {
             for y in 0..H as usize {
                 if self.pixel[x][y].dirty {
-                    self.draw_pixel(&self.pixel[x][y].clone());
+                    self.draw_pixel(&self.pixel[x][y].clone(), renderer);
                     self.pixel[x][y].dirty = false;
                 }
             }
         }
-        self.screen.present();
+        renderer.screen.present();
     }
 
     pub fn draw_screen(&mut self, n: u8, x: u8, y: u8, cpu: &mut CPU) {
