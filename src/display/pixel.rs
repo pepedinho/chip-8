@@ -18,6 +18,18 @@ impl Pixel {
             dirty: false,
         }
     }
+
+    pub fn set_color(&mut self, color: u8) {
+        if color != self.color {
+            self.color = color;
+            self.dirty = true;
+        }
+    }
+
+    pub fn toggle_color(&mut self) {
+        self.color ^= 1;
+        self.dirty = true;
+    }
 }
 
 impl<'a> ContextPixels<'a> {
@@ -91,7 +103,10 @@ impl<'a> ContextPixels<'a> {
     pub fn update_screen(&mut self) {
         for x in 0..W as usize {
             for y in 0..H as usize {
-                self.draw_pixel(&self.pixel[x][y].clone());
+                if self.pixel[x][y].dirty {
+                    self.draw_pixel(&self.pixel[x][y].clone());
+                    self.pixel[x][y].dirty = false;
+                }
             }
         }
         self.screen.present();
@@ -118,7 +133,8 @@ impl<'a> ContextPixels<'a> {
                     if self.pixel[x_pos][y_pos].color == WHITE {
                         cpu.V[0xF] = 1; // colision
                     }
-                    self.pixel[x_pos][y_pos].color ^= 1;
+                    self.pixel[x_pos][y_pos].toggle_color();
+                    // self.pixel[x_pos][y_pos].color ^= 1;
                 }
             }
         }
