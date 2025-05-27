@@ -16,6 +16,7 @@ pub const HEIGHT: u32 = H * DIMPIXEL; // longueur de l'écran
 pub struct Pixel {
     pub position: Rect,
     pub color: u8,
+    pub dirty: bool, // sert q indiquer si il y a eu un changement d'etat du pixel
 }
 
 pub struct ContextPixels<'a> {

@@ -15,6 +15,7 @@ impl Pixel {
         Pixel {
             color: BLACK,
             position: pos,
+            dirty: false,
         }
     }
 }
