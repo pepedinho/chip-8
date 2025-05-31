@@ -1,4 +1,7 @@
-use std::{env::args, time::Duration};
+use std::{
+    env::args,
+    time::{Duration, Instant},
+};
 
 use clap::Parser;
 use cpu::schema::{Jump, Keyboard, CPU, CPU_SPEED};
@@ -16,6 +19,8 @@ pub struct Config {
     pub speed: usize,
     #[arg(short, long, default_value_t = false)]
     pub debug: bool,
+    #[arg(short, long)]
+    pub bench: Option<u32>,
 }
 
 fn main() -> Result<(), String> {
@@ -52,6 +57,26 @@ fn main() -> Result<(), String> {
     cpu.init_memory(); //mapper la police
 
     let j = Jump::new();
+
+    if let Some(bench) = config.bench {
+        println!("Start Benchmark ...");
+        let start = Instant::now();
+        for _ in 0..bench {
+            for _ in 0..config.speed {
+                let opcode = cpu.get_opcode();
+                cpu.interpret(opcode, &j, &mut ctx);
+            }
+
+            ctx.update_screen();
+            cpu.countdown();
+        }
+        let elapsed = start.elapsed();
+        let ips = bench as f64 / elapsed.as_secs_f64();
+        println!("Executed {} instructions in {:?}", bench, elapsed);
+        println!("Instructions per second: {:.2}", ips);
+        return Ok(());
+    }
+
     'running: loop {
         for event in event_pump.poll_iter() {
             match event {
