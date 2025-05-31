@@ -81,27 +81,20 @@ impl CPU {
             );
         }
         if let Some(jit_block) = self.jit_cache.get(&opcode) {
-            let func: extern "C" fn(&mut CPU, &mut ContextPixels) = unsafe {
+            let func: extern "C" fn(&mut CPU, &mut ContextPixels) -> bool = unsafe {
                 std::mem::transmute(
                     jit_block
                         .code
                         .ptr(dynasmrt::AssemblyOffset(jit_block.entry)),
                 )
             };
-            func(self, display);
+            can_iter = func(self, display);
         } else {
             match b4 {
                 0 => {}                      // opcode non implementer
                 1 => display.clear_screen(), // efface l'ecran
                 2 => {
                     // 00EE revien du saut
-                    //println!("2");
-                    //if self.sp == 0 {
-                    //    panic!("Stack underflow: retour sans appel de sous-programme")
-                    //}
-                    //
-                    //self.sp -= 1;
-                    //self.pc = self.stack[self.sp as usize];
                     let mut asm = Assembler::new().unwrap();
                     let offset = CPU::jit_compile_00EE(&mut asm);
                     let code = asm.finalize().unwrap();
@@ -121,8 +114,20 @@ impl CPU {
                 }
                 3 => {
                     // 1NNN effectue un saut à l'adresse 1NNN.
-                    //println!("3");
-                    self.pc = nnn;
+                    let mut asm = Assembler::new().unwrap();
+                    let offset = CPU::jit_compile_1NNN(&mut asm, nnn);
+                    let code = asm.finalize().unwrap();
+
+                    self.jit_cache.insert(
+                        opcode,
+                        JitBlock {
+                            code,
+                            entry: offset.0,
+                        },
+                    );
+                    let func: extern "C" fn(&mut CPU, &mut ContextPixels) =
+                        unsafe { std::mem::transmute(self.jit_cache[&opcode].code.ptr(offset)) };
+                    func(self, display);
                     can_iter = false;
                 }
                 4 => {

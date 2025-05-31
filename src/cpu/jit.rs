@@ -5,7 +5,7 @@ use memoffset::offset_of;
 
 use super::schema::CPU;
 
-extern "C" fn panic_stack_underflow(cpu: &mut CPU) -> ! {
+extern "C" fn panic_stack_underflow(_cpu: &mut CPU) -> ! {
     panic!("Stack underflow: retour sans appel de sous programme");
 }
 
@@ -17,36 +17,46 @@ impl CPU {
 
         let s = asm.offset();
 
-        unsafe {
-            dynasm!(asm
-                // Charger la valeur de sp dans al (byte)
-                ; mov al, BYTE [rdi + offset_sp]
+        dynasm!(asm
+            // Charger la valeur de sp dans al (byte)
+            ; mov al, BYTE [rdi + offset_sp]
 
-                // Tester si sp == 0
-                ; test al, al
-                ; jz >panic_underflow
+            // Tester si sp == 0
+            ; test al, al
+            ; jz >panic_underflow
 
-                // Décrémenter sp
-                ; dec al
-                ; mov BYTE [rdi + offset_sp], al
+            // Décrémenter sp
+            ; dec al
+            ; mov BYTE [rdi + offset_sp], al
 
-                // Charger la valeur stack[sp] dans dx (mot 16 bits)
-                ; movzx rcx, al
-                ; movzx rdx, WORD [rdi + offset_stack + rcx * 2]
+            // Charger la valeur stack[sp] dans dx (mot 16 bits)
+            ; movzx rcx, al
+            ; movzx rdx, WORD [rdi + offset_stack + rcx * 2]
 
-                // Mettre dx dans pc
-                ; mov WORD [rdi + offset_pc], dx
+            // Mettre dx dans pc
+            ; mov WORD [rdi + offset_pc], dx
 
-                ; ret
+            ; mov rax, 1
+            ; ret
 
-                // Label panic
-                ; panic_underflow:
-                // rdi contient déjà l'argument &mut CPU
-                ; mov rax, QWORD panic_stack_underflow as _
-                ; call rax
-                ; int3
-            )
-        }
+            // Label panic
+            ; panic_underflow:
+            // rdi contient déjà l'argument &mut CPU
+            ; mov rax, QWORD panic_stack_underflow as _
+            ; call rax
+            ; int3
+        );
+        s
+    }
+
+    pub fn jit_compile_1NNN(asm: &mut Assembler, nnn: u16) -> AssemblyOffset {
+        let offset_pc = offset_of!(CPU, pc) as i32;
+        let s = asm.offset();
+        dynasm!(asm
+            ; mov WORD [rdi + offset_pc], nnn as i16
+            ; mov rax, 0 // charge false en valeur de retour
+            ; ret
+        );
         s
     }
 }
