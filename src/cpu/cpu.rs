@@ -4,6 +4,8 @@ use std::{
     io::{self, Read},
 };
 
+use crate::jit_compile_and_run;
+
 use crate::display::schema::ContextPixels;
 use dynasmrt::x64::Assembler;
 use rand::random;
@@ -94,41 +96,11 @@ impl CPU {
                 0 => {}                      // opcode non implementer
                 1 => display.clear_screen(), // efface l'ecran
                 2 => {
-                    // 00EE revien du saut
-                    let mut asm = Assembler::new().unwrap();
-                    let offset = CPU::jit_compile_00EE(&mut asm);
-                    let code = asm.finalize().unwrap();
-
-                    self.jit_cache.insert(
-                        opcode,
-                        JitBlock {
-                            code,
-                            entry: offset.0,
-                        },
-                    );
-
-                    let func: extern "C" fn(&mut CPU, &mut ContextPixels) =
-                        unsafe { std::mem::transmute(self.jit_cache[&opcode].code.ptr(offset)) };
-
-                    func(self, display);
+                    jit_compile_and_run!(self, display, opcode, CPU::jit_compile_00EE);
                 }
                 3 => {
-                    // 1NNN effectue un saut à l'adresse 1NNN.
-                    let mut asm = Assembler::new().unwrap();
-                    let offset = CPU::jit_compile_1NNN(&mut asm, nnn);
-                    let code = asm.finalize().unwrap();
-
-                    self.jit_cache.insert(
-                        opcode,
-                        JitBlock {
-                            code,
-                            entry: offset.0,
-                        },
-                    );
-                    let func: extern "C" fn(&mut CPU, &mut ContextPixels) =
-                        unsafe { std::mem::transmute(self.jit_cache[&opcode].code.ptr(offset)) };
-                    func(self, display);
-                    can_iter = false;
+                    can_iter =
+                        jit_compile_and_run!(self, display, opcode, CPU::jit_compile_1NNN, nnn);
                 }
                 4 => {
                     // 2NNN appelle le sous-programme en NNN, mais on revient ensuite.

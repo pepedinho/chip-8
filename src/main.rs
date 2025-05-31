@@ -7,6 +7,7 @@ use sdl2::{event::Event, keyboard::Keycode};
 
 mod cpu;
 mod display;
+mod macros;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Émulateur Chip-8 en Rust")]
@@ -69,7 +70,11 @@ fn main() -> Result<(), String> {
         }
         let elapsed = start.elapsed();
         let ips = (bench as f64 * config.speed as f64) / elapsed.as_secs_f64();
-        println!("Executed {} instructions in {:?}", bench, elapsed);
+        println!(
+            "Executed {} instructions in {:?}",
+            bench * config.speed as u32,
+            elapsed
+        );
         println!("Instructions per second: {:.2}", ips);
         return Ok(());
     }
