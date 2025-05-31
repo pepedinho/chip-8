@@ -71,8 +71,12 @@ fn main() -> Result<(), String> {
             cpu.countdown();
         }
         let elapsed = start.elapsed();
-        let ips = bench as f64 / elapsed.as_secs_f64();
-        println!("Executed {} instructions in {:?}", bench, elapsed);
+        let ips = (bench as f64 * config.speed as f64) / elapsed.as_secs_f64();
+        println!(
+            "Executed {} instructions in {:?}",
+            bench * config.speed as u32,
+            elapsed
+        );
         println!("Instructions per second: {:.2}", ips);
         return Ok(());
     }
