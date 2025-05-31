@@ -16,7 +16,15 @@ macro_rules! jit_compile_and_run {
         let func: extern "C" fn(&mut CPU, &mut ContextPixels) -> bool =
             unsafe { std::mem::transmute($self.jit_cache[&$opcode].code.ptr(offset))};
 
-        println!("COMPILE {:?}", stringify!($compile_fn));
+        let s = format!("{}", stringify!($compile_fn));
+        let s_trim = s.trim_matches('"');
+        let prefix = "CPU::jit_compile_";
+        let ins = if s_trim.starts_with(prefix) {
+            &s[prefix.len()..]
+        } else {
+            s_trim
+        };
+        println!("COMPILE {}", ins);
         func($self, $display)
     }}
 }

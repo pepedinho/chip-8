@@ -104,53 +104,33 @@ impl CPU {
                 }
                 4 => {
                     // 2NNN appelle le sous-programme en NNN, mais on revient ensuite.
-                    //println!("4");
-                    if self.sp >= 16 {
-                        panic!("Stack overflow: trop d'appels de sous-programmes");
-                    }
-
-                    self.stack[self.sp as usize] = self.pc;
-                    self.sp += 1;
-                    self.pc = nnn;
-                    //self.pc -= 2;
-                    can_iter = false;
+                    can_iter =
+                        jit_compile_and_run!(self, display, opcode, CPU::jit_compile_2NNN, nnn);
                 }
                 5 => {
                     // 3XKK saute l'instruction suivante si VX est égal à KK.
-                    //println!("5");
-                    if self.V[b3 as usize] == kk {
-                        self.pc += 2;
-                    }
+                    jit_compile_and_run!(self, display, opcode, CPU::jit_compile_3XKK, b3, kk);
                 }
                 6 => {
                     // 4XKK saute l'instruction suivante si VX et KK ne sont pas égaux.
-                    //println!("6");
-                    if self.V[b3 as usize] != kk {
-                        self.pc += 2;
-                    }
+                    jit_compile_and_run!(self, display, opcode, CPU::jit_compile_4XKK, b3, kk);
                 }
                 7 => {
                     // 5XY0 saute l'instruction suivante si VX et VY sont égaux.
-                    //println!("7");
-                    if self.V[b3 as usize] == self.V[b2 as usize] {
-                        self.pc += 2;
-                    }
+                    jit_compile_and_run!(self, display, opcode, CPU::jit_compile_5XY0, b3, b2);
                 }
                 8 => {
                     // 6XNN définit VX à KK.
-                    //println!("8");
-                    self.V[b3 as usize] = kk;
+                    jit_compile_and_run!(self, display, opcode, CPU::jit_compile_6XNN, b3, kk);
                 }
                 9 => {
-                    // 7XKK ajoute KK à VX.
-                    //println!("9");
-                    self.V[b3 as usize] = self.V[b3 as usize].wrapping_add(kk); // additione et evite
-                                                                                // l'overflow
+                    // 7XNN ajoute KK à VX.
+                    jit_compile_and_run!(self, display, opcode, CPU::jit_compile_7XNN, b3, kk);
                 }
                 10 => {
                     // 8XY0 définit VX à la valeur de VY.
-                    //println!("10");
-                    self.V[b3 as usize] = self.V[b2 as usize];
+                    //self.V[b3 as usize] = self.V[b2 as usize];
+                    jit_compile_and_run!(self, display, opcode, CPU::jit_compile_8XY0, b3, b2);
                 }
                 11 => {
                     // 8XY1 définit VX à VX OR VY.
