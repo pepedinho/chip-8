@@ -1,3 +1,7 @@
+use std::collections::HashMap;
+
+use dynasmrt::{x64::Assembler, ExecutableBuffer};
+
 pub const MEM_SIZE: usize = 4096;
 pub const START_ADRR: usize = 0x200;
 pub const NBR_OPCODE: usize = 35;
@@ -33,6 +37,13 @@ pub struct CPU {
     pub sound_count: u8, // compteur pour le son
     pub pc: u16, // pour parcourir le tableau « mémoire »
     pub debug: bool,
+    pub jit_cache: HashMap<u16, JitBlock>, // Just in Time cache to store pre compiled instructions
+    pub asm: [Option<Assembler>; 35],
+}
+
+pub struct JitBlock {
+    pub code: ExecutableBuffer,
+    pub entry: usize,
 }
 
 pub struct Jump {

@@ -1,15 +1,25 @@
 use std::{
+    collections::HashMap,
     fs::File,
     io::{self, Read},
 };
 
 use crate::display::schema::ContextPixels;
+use dynasmrt::x64::Assembler;
 use rand::random;
 
-use super::schema::{Jump, Keyboard, CHIP8_FONTSET, CPU, MEM_SIZE, NBR_OPCODE, START_ADRR};
+use super::schema::{
+    JitBlock, Jump, Keyboard, CHIP8_FONTSET, CPU, MEM_SIZE, NBR_OPCODE, START_ADRR,
+};
+
+type JitFn = extern "C" fn(&mut CPU);
 
 impl CPU {
     pub fn new(debug: bool) -> Self {
+        let mut asms = Vec::with_capacity(35);
+        for _ in 0..35 {
+            asms.push(Some(Assembler::new().unwrap()));
+        }
         CPU {
             mem: [0u8; MEM_SIZE],
             V: [0u8; 16],
@@ -20,6 +30,8 @@ impl CPU {
             sound_count: 0,
             I: 0,
             debug,
+            jit_cache: HashMap::new(),
+            asm: asms.try_into().unwrap(),
         }
     }
 
@@ -68,248 +80,274 @@ impl CPU {
                 b2
             );
         }
+        if let Some(jit_block) = self.jit_cache.get(&opcode) {
+            let func: extern "C" fn(&mut CPU, &mut ContextPixels) = unsafe {
+                std::mem::transmute(
+                    jit_block
+                        .code
+                        .ptr(dynasmrt::AssemblyOffset(jit_block.entry)),
+                )
+            };
+            func(self, display);
+        } else {
+            match b4 {
+                0 => {}                      // opcode non implementer
+                1 => display.clear_screen(), // efface l'ecran
+                2 => {
+                    // 00EE revien du saut
+                    //println!("2");
+                    //if self.sp == 0 {
+                    //    panic!("Stack underflow: retour sans appel de sous-programme")
+                    //}
+                    //
+                    //self.sp -= 1;
+                    //self.pc = self.stack[self.sp as usize];
+                    let mut asm = Assembler::new().unwrap();
+                    let offset = CPU::jit_compile_00EE(&mut asm);
+                    let code = asm.finalize().unwrap();
 
-        match b4 {
-            0 => {}                      // opcode non implementer
-            1 => display.clear_screen(), // efface l'ecran
-            2 => {
-                // 00EE revien du saut
-                //println!("2");
-                if self.sp == 0 {
-                    panic!("Stack underflow: retour sans appel de sous-programme")
-                }
+                    self.jit_cache.insert(
+                        opcode,
+                        JitBlock {
+                            code,
+                            entry: offset.0,
+                        },
+                    );
 
-                self.sp -= 1;
-                self.pc = self.stack[self.sp as usize];
-            }
-            3 => {
-                // 1NNN effectue un saut à l'adresse 1NNN.
-                //println!("3");
-                self.pc = nnn;
-                can_iter = false;
-            }
-            4 => {
-                // 2NNN appelle le sous-programme en NNN, mais on revient ensuite.
-                //println!("4");
-                if self.sp >= 16 {
-                    panic!("Stack overflow: trop d'appels de sous-programmes");
-                }
+                    let func: extern "C" fn(&mut CPU, &mut ContextPixels) =
+                        unsafe { std::mem::transmute(self.jit_cache[&opcode].code.ptr(offset)) };
 
-                self.stack[self.sp as usize] = self.pc;
-                self.sp += 1;
-                self.pc = nnn;
-                //self.pc -= 2;
-                can_iter = false;
-            }
-            5 => {
-                // 3XKK saute l'instruction suivante si VX est égal à KK.
-                //println!("5");
-                if self.V[b3 as usize] == kk {
-                    self.pc += 2;
+                    func(self, display);
                 }
-            }
-            6 => {
-                // 4XKK saute l'instruction suivante si VX et KK ne sont pas égaux.
-                //println!("6");
-                if self.V[b3 as usize] != kk {
-                    self.pc += 2;
+                3 => {
+                    // 1NNN effectue un saut à l'adresse 1NNN.
+                    //println!("3");
+                    self.pc = nnn;
+                    can_iter = false;
                 }
-            }
-            7 => {
-                // 5XY0 saute l'instruction suivante si VX et VY sont égaux.
-                //println!("7");
-                if self.V[b3 as usize] == self.V[b2 as usize] {
-                    self.pc += 2;
-                }
-            }
-            8 => {
-                // 6XNN définit VX à KK.
-                //println!("8");
-                self.V[b3 as usize] = kk;
-            }
-            9 => {
-                // 7XKK ajoute KK à VX.
-                //println!("9");
-                self.V[b3 as usize] = self.V[b3 as usize].wrapping_add(kk); // additione et evite
-                                                                            // l'overflow
-            }
-            10 => {
-                // 8XY0 définit VX à la valeur de VY.
-                //println!("10");
-                self.V[b3 as usize] = self.V[b2 as usize];
-            }
-            11 => {
-                // 8XY1 définit VX à VX OR VY.
-                //println!("11");
-                self.V[b3 as usize] = self.V[b3 as usize] | self.V[b2 as usize];
-            }
-            12 => {
-                // 8XY2 définit VX à VX AND VY.
-                //println!("12");
-                self.V[b3 as usize] = self.V[b3 as usize] & self.V[b2 as usize];
-            }
-            13 => {
-                // 8XY3 définit VX à VX XOR VY.
-                //println!("13");
-                self.V[b3 as usize] = self.V[b3 as usize] ^ self.V[b2 as usize];
-            }
-            14 => {
-                // 8XY4 ajoute VY à VX. VF est mis à 1 quand il y a un dépassement de mémoire (carry), et à 0 quand il n'y en pas.
-                //println!("14");
-                let (result, carry) = self.V[b3 as usize].overflowing_add(self.V[b2 as usize]);
-                self.V[b3 as usize] = result;
-                self.V[0xF] = if carry { 1 } else { 0 };
-            }
-            15 => {
-                // 8XY5 VY est soustraite de VX. VF est mis à 0 quand il y a un emprunt, et à 1 quand il n'y a en pas.
-                //println!("15");
-                let (result, borrow) = self.V[b3 as usize].overflowing_sub(self.V[b2 as usize]);
-                self.V[b3 as usize] = result;
-                self.V[0xF] = if borrow { 0 } else { 1 };
-            }
-            16 => {
-                // 8XY6 décale (shift) VX à droite de 1 bit. VF est fixé à la valeur du bit de poids faible de VX avant le décalage.
-                //println!("16");
-                self.V[0xF] = self.V[b3 as usize] & 0x1;
-
-                self.V[b3 as usize] = self.V[b3 as usize] >> 1;
-            }
-            17 => {
-                // 8XY7 VX = VY - VX. VF est mis à 0 quand il y a un emprunt et à 1 quand il n'y en a pas.
-                //println!("17");
-                let (result, borrow) = self.V[b2 as usize].overflowing_sub(self.V[b3 as usize]);
-                self.V[b3 as usize] = result;
-                self.V[0xF] = if borrow { 0 } else { 1 };
-            }
-            18 => {
-                // 8XYE décale (shift) VX à gauche de 1 bit. VF est fixé à la valeur du bit de poids fort de VX avant le décalage.
-                //println!("18");
-                self.V[0xF] = (self.V[b3 as usize] >> 7) & 0x1;
-
-                self.V[b3 as usize] = self.V[b3 as usize] << 1;
-            }
-            19 => {
-                // 9XY0 saute l'instruction suivante si VX et VY ne sont pas égaux.
-                //println!("19");
-                if self.V[b3 as usize] != self.V[b2 as usize] {
-                    self.pc += 2;
-                }
-            }
-            20 => {
-                // ANNN affecte NNN à I.
-                //println!("20");
-                self.I = nnn;
-            }
-            21 => {
-                // BNNN passe à l'adresse NNN + V0.
-                //println!("21");
-                self.pc = self.V[0] as u16 + nnn;
-            }
-            22 => {
-                // CXNN définit VX à un nombre aléatoire inférieur à NN.
-                //println!("22");
-                let r: u8 = random();
-                self.V[b3 as usize] = r & kk;
-            }
-            23 => {
-                // DXYN dessine un sprite aux coordonnées (VX, VY).
-                //println!("23");
-                display.draw_screen(b1, b3, b2, self);
-            }
-            24 => {
-                // EX9E saute l'instruction suivante si la clé stockée dans VX est pressée.
-                //println!("24");
-                let key = self.V[b3 as usize];
-
-                if display.keyboard.ispressed(key) {
-                    self.pc += 2;
-                }
-            }
-            25 => {
-                // EXA1 saute l'instruction suivante si la clé stockée dans VX n'est pas pressée.
-                //println!("25");
-                let key = self.V[b3 as usize];
-
-                if !display.keyboard.ispressed(key) {
-                    self.pc += 2;
-                }
-            }
-            26 => {
-                // FX07 définit VX à la valeur de la temporisation.
-                //println!("26");
-                self.V[b3 as usize] = self.game_count;
-            }
-            27 => {
-                // FX0A attend l'appui sur une touche et la stocke ensuite dans VX.
-                //println!("27");
-                can_iter = false;
-                if let Some(index) = display.keyboard.awaiting_key {
-                    for (i, &pressed) in display.keyboard.keys.iter().enumerate() {
-                        if pressed {
-                            self.V[index as usize] = i as u8;
-                            display.keyboard.awaiting_key = None;
-                            can_iter = true;
-                            break;
-                        }
+                4 => {
+                    // 2NNN appelle le sous-programme en NNN, mais on revient ensuite.
+                    //println!("4");
+                    if self.sp >= 16 {
+                        panic!("Stack overflow: trop d'appels de sous-programmes");
                     }
-                } else {
-                    display.keyboard.awaiting_key = Some(b3);
-                }
-            }
-            28 => {
-                // FX15 définit la temporisation à VX.
-                //println!("28");
-                self.game_count = self.V[b3 as usize];
-            }
-            29 => {
-                // FX18 définit la minuterie sonore à VX.
-                //println!("29");
-                self.sound_count = self.V[b3 as usize];
-            }
-            30 => {
-                // FX1E ajo ute à VX I. VF est mis à 1 quand il y a overflow (I+VX>0xFFF), et à 0 si tel n'est pas le cas.
-                //println!("30");
-                let vx = self.V[b3 as usize] as u16;
-                let res = self.I + vx;
 
-                if res > 0x0FFF {
-                    self.V[0xF] = 1;
-                } else {
-                    self.V[0xF] = 0;
+                    self.stack[self.sp as usize] = self.pc;
+                    self.sp += 1;
+                    self.pc = nnn;
+                    //self.pc -= 2;
+                    can_iter = false;
                 }
-                self.I = res;
-            }
-            31 => {
-                // FX29 définit I à l'emplacement du caractère stocké dans VX. Les caractères 0-F (en hexadécimal) sont représentés par une police 4x5.
-                //println!("31");
-                let digit = self.V[b3 as usize] as u16;
-                self.I = digit * 5;
-            }
-            32 => {
-                // FX33 stocke dans la mémoire le code décimal représentant VX (dans I, I+1, I+2).
-                //println!("32");
-                let value = self.V[b3 as usize];
-                self.mem[self.I as usize] = value / 100;
-                self.mem[(self.I + 1) as usize] = (value / 10) % 10;
-                self.mem[(self.I + 2) as usize] = value % 10;
-            }
-            33 => {
-                // FX55 stocke V0 à VX en mémoire à partir de l'adresse I.
-                //println!("33");
-                for i in 0..=b3 {
-                    self.mem[(self.I + i as u16) as usize] = self.V[i as usize];
+                5 => {
+                    // 3XKK saute l'instruction suivante si VX est égal à KK.
+                    //println!("5");
+                    if self.V[b3 as usize] == kk {
+                        self.pc += 2;
+                    }
                 }
-            }
-            34 => {
-                // FX65 remplit V0 à VX avec les valeurs de la mémoire à partir de l'adresse I.
-                //println!("34");
-                for i in 0..=b3 {
-                    self.V[i as usize] = self.mem[(self.I + i as u16) as usize];
+                6 => {
+                    // 4XKK saute l'instruction suivante si VX et KK ne sont pas égaux.
+                    //println!("6");
+                    if self.V[b3 as usize] != kk {
+                        self.pc += 2;
+                    }
                 }
-            }
-            _ => {
-                // Code non reconnu
-                println!("ERROR UNEXPECTED INSTRUCTION => ");
+                7 => {
+                    // 5XY0 saute l'instruction suivante si VX et VY sont égaux.
+                    //println!("7");
+                    if self.V[b3 as usize] == self.V[b2 as usize] {
+                        self.pc += 2;
+                    }
+                }
+                8 => {
+                    // 6XNN définit VX à KK.
+                    //println!("8");
+                    self.V[b3 as usize] = kk;
+                }
+                9 => {
+                    // 7XKK ajoute KK à VX.
+                    //println!("9");
+                    self.V[b3 as usize] = self.V[b3 as usize].wrapping_add(kk); // additione et evite
+                                                                                // l'overflow
+                }
+                10 => {
+                    // 8XY0 définit VX à la valeur de VY.
+                    //println!("10");
+                    self.V[b3 as usize] = self.V[b2 as usize];
+                }
+                11 => {
+                    // 8XY1 définit VX à VX OR VY.
+                    //println!("11");
+                    self.V[b3 as usize] = self.V[b3 as usize] | self.V[b2 as usize];
+                }
+                12 => {
+                    // 8XY2 définit VX à VX AND VY.
+                    //println!("12");
+                    self.V[b3 as usize] = self.V[b3 as usize] & self.V[b2 as usize];
+                }
+                13 => {
+                    // 8XY3 définit VX à VX XOR VY.
+                    //println!("13");
+                    self.V[b3 as usize] = self.V[b3 as usize] ^ self.V[b2 as usize];
+                }
+                14 => {
+                    // 8XY4 ajoute VY à VX. VF est mis à 1 quand il y a un dépassement de mémoire (carry), et à 0 quand il n'y en pas.
+                    //println!("14");
+                    let (result, carry) = self.V[b3 as usize].overflowing_add(self.V[b2 as usize]);
+                    self.V[b3 as usize] = result;
+                    self.V[0xF] = if carry { 1 } else { 0 };
+                }
+                15 => {
+                    // 8XY5 VY est soustraite de VX. VF est mis à 0 quand il y a un emprunt, et à 1 quand il n'y a en pas.
+                    //println!("15");
+                    let (result, borrow) = self.V[b3 as usize].overflowing_sub(self.V[b2 as usize]);
+                    self.V[b3 as usize] = result;
+                    self.V[0xF] = if borrow { 0 } else { 1 };
+                }
+                16 => {
+                    // 8XY6 décale (shift) VX à droite de 1 bit. VF est fixé à la valeur du bit de poids faible de VX avant le décalage.
+                    //println!("16");
+                    self.V[0xF] = self.V[b3 as usize] & 0x1;
+
+                    self.V[b3 as usize] = self.V[b3 as usize] >> 1;
+                }
+                17 => {
+                    // 8XY7 VX = VY - VX. VF est mis à 0 quand il y a un emprunt et à 1 quand il n'y en a pas.
+                    //println!("17");
+                    let (result, borrow) = self.V[b2 as usize].overflowing_sub(self.V[b3 as usize]);
+                    self.V[b3 as usize] = result;
+                    self.V[0xF] = if borrow { 0 } else { 1 };
+                }
+                18 => {
+                    // 8XYE décale (shift) VX à gauche de 1 bit. VF est fixé à la valeur du bit de poids fort de VX avant le décalage.
+                    //println!("18");
+                    self.V[0xF] = (self.V[b3 as usize] >> 7) & 0x1;
+
+                    self.V[b3 as usize] = self.V[b3 as usize] << 1;
+                }
+                19 => {
+                    // 9XY0 saute l'instruction suivante si VX et VY ne sont pas égaux.
+                    //println!("19");
+                    if self.V[b3 as usize] != self.V[b2 as usize] {
+                        self.pc += 2;
+                    }
+                }
+                20 => {
+                    // ANNN affecte NNN à I.
+                    //println!("20");
+                    self.I = nnn;
+                }
+                21 => {
+                    // BNNN passe à l'adresse NNN + V0.
+                    //println!("21");
+                    self.pc = self.V[0] as u16 + nnn;
+                }
+                22 => {
+                    // CXNN définit VX à un nombre aléatoire inférieur à NN.
+                    //println!("22");
+                    let r: u8 = random();
+                    self.V[b3 as usize] = r & kk;
+                }
+                23 => {
+                    // DXYN dessine un sprite aux coordonnées (VX, VY).
+                    //println!("23");
+                    display.draw_screen(b1, b3, b2, self);
+                }
+                24 => {
+                    // EX9E saute l'instruction suivante si la clé stockée dans VX est pressée.
+                    //println!("24");
+                    let key = self.V[b3 as usize];
+
+                    if display.keyboard.ispressed(key) {
+                        self.pc += 2;
+                    }
+                }
+                25 => {
+                    // EXA1 saute l'instruction suivante si la clé stockée dans VX n'est pas pressée.
+                    //println!("25");
+                    let key = self.V[b3 as usize];
+
+                    if !display.keyboard.ispressed(key) {
+                        self.pc += 2;
+                    }
+                }
+                26 => {
+                    // FX07 définit VX à la valeur de la temporisation.
+                    //println!("26");
+                    self.V[b3 as usize] = self.game_count;
+                }
+                27 => {
+                    // FX0A attend l'appui sur une touche et la stocke ensuite dans VX.
+                    //println!("27");
+                    can_iter = false;
+                    if let Some(index) = display.keyboard.awaiting_key {
+                        for (i, &pressed) in display.keyboard.keys.iter().enumerate() {
+                            if pressed {
+                                self.V[index as usize] = i as u8;
+                                display.keyboard.awaiting_key = None;
+                                can_iter = true;
+                                break;
+                            }
+                        }
+                    } else {
+                        display.keyboard.awaiting_key = Some(b3);
+                    }
+                }
+                28 => {
+                    // FX15 définit la temporisation à VX.
+                    //println!("28");
+                    self.game_count = self.V[b3 as usize];
+                }
+                29 => {
+                    // FX18 définit la minuterie sonore à VX.
+                    //println!("29");
+                    self.sound_count = self.V[b3 as usize];
+                }
+                30 => {
+                    // FX1E ajo ute à VX I. VF est mis à 1 quand il y a overflow (I+VX>0xFFF), et à 0 si tel n'est pas le cas.
+                    //println!("30");
+                    let vx = self.V[b3 as usize] as u16;
+                    let res = self.I + vx;
+
+                    if res > 0x0FFF {
+                        self.V[0xF] = 1;
+                    } else {
+                        self.V[0xF] = 0;
+                    }
+                    self.I = res;
+                }
+                31 => {
+                    // FX29 définit I à l'emplacement du caractère stocké dans VX. Les caractères 0-F (en hexadécimal) sont représentés par une police 4x5.
+                    //println!("31");
+                    let digit = self.V[b3 as usize] as u16;
+                    self.I = digit * 5;
+                }
+                32 => {
+                    // FX33 stocke dans la mémoire le code décimal représentant VX (dans I, I+1, I+2).
+                    //println!("32");
+                    let value = self.V[b3 as usize];
+                    self.mem[self.I as usize] = value / 100;
+                    self.mem[(self.I + 1) as usize] = (value / 10) % 10;
+                    self.mem[(self.I + 2) as usize] = value % 10;
+                }
+                33 => {
+                    // FX55 stocke V0 à VX en mémoire à partir de l'adresse I.
+                    //println!("33");
+                    for i in 0..=b3 {
+                        self.mem[(self.I + i as u16) as usize] = self.V[i as usize];
+                    }
+                }
+                34 => {
+                    // FX65 remplit V0 à VX avec les valeurs de la mémoire à partir de l'adresse I.
+                    //println!("34");
+                    for i in 0..=b3 {
+                        self.V[i as usize] = self.mem[(self.I + i as u16) as usize];
+                    }
+                }
+                _ => {
+                    // Code non reconnu
+                    println!("ERROR UNEXPECTED INSTRUCTION => ");
+                }
             }
         }
 

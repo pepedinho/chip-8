@@ -7,3 +7,6 @@ edition = "2021"
 sdl2 = "0.35"
 rand = "0.8"
 clap = { version = "4.4", features = ["derive"] }
+dynasm = "1.2"
+dynasmrt = "1.2"
+memoffset = "0.6"
