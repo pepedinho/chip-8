@@ -134,76 +134,74 @@ impl CPU {
                 }
                 11 => {
                     // 8XY1 définit VX à VX OR VY.
-                    //println!("11");
-                    self.V[b3 as usize] = self.V[b3 as usize] | self.V[b2 as usize];
+                    //self.V[b3 as usize] = self.V[b3 as usize] | self.V[b2 as usize];
+                    jit_compile_and_run!(self, display, opcode, CPU::jit_compile_8XY1, b3, b2);
                 }
                 12 => {
                     // 8XY2 définit VX à VX AND VY.
-                    //println!("12");
-                    self.V[b3 as usize] = self.V[b3 as usize] & self.V[b2 as usize];
+                    //self.V[b3 as usize] = self.V[b3 as usize] & self.V[b2 as usize];
+                    jit_compile_and_run!(self, display, opcode, CPU::jit_compile_8XY2, b3, b2);
                 }
                 13 => {
                     // 8XY3 définit VX à VX XOR VY.
-                    //println!("13");
-                    self.V[b3 as usize] = self.V[b3 as usize] ^ self.V[b2 as usize];
+                    //self.V[b3 as usize] = self.V[b3 as usize] ^ self.V[b2 as usize];
+                    jit_compile_and_run!(self, display, opcode, CPU::jit_compile_8XY3, b3, b2);
                 }
                 14 => {
                     // 8XY4 ajoute VY à VX. VF est mis à 1 quand il y a un dépassement de mémoire (carry), et à 0 quand il n'y en pas.
-                    //println!("14");
-                    let (result, carry) = self.V[b3 as usize].overflowing_add(self.V[b2 as usize]);
-                    self.V[b3 as usize] = result;
-                    self.V[0xF] = if carry { 1 } else { 0 };
+                    //let (result, carry) = self.V[b3 as usize].overflowing_add(self.V[b2 as usize]);
+                    //self.V[b3 as usize] = result;
+                    //self.V[0xF] = if carry { 1 } else { 0 };
+                    jit_compile_and_run!(self, display, opcode, CPU::jit_compile_8XY4, b3, b2);
                 }
                 15 => {
                     // 8XY5 VY est soustraite de VX. VF est mis à 0 quand il y a un emprunt, et à 1 quand il n'y a en pas.
-                    //println!("15");
-                    let (result, borrow) = self.V[b3 as usize].overflowing_sub(self.V[b2 as usize]);
-                    self.V[b3 as usize] = result;
-                    self.V[0xF] = if borrow { 0 } else { 1 };
+                    //let (result, borrow) = self.V[b3 as usize].overflowing_sub(self.V[b2 as usize]);
+                    //self.V[b3 as usize] = result;
+                    //self.V[0xF] = if borrow { 0 } else { 1 };
+                    jit_compile_and_run!(self, display, opcode, CPU::jit_compile_8XY5, b3, b2);
                 }
                 16 => {
                     // 8XY6 décale (shift) VX à droite de 1 bit. VF est fixé à la valeur du bit de poids faible de VX avant le décalage.
-                    //println!("16");
-                    self.V[0xF] = self.V[b3 as usize] & 0x1;
-
-                    self.V[b3 as usize] = self.V[b3 as usize] >> 1;
+                    //self.V[0xF] = self.V[b3 as usize] & 0x1;
+                    //self.V[b3 as usize] = self.V[b3 as usize] >> 1;
+                    jit_compile_and_run!(self, display, opcode, CPU::jit_compile_8XY6, b3);
                 }
                 17 => {
                     // 8XY7 VX = VY - VX. VF est mis à 0 quand il y a un emprunt et à 1 quand il n'y en a pas.
-                    //println!("17");
-                    let (result, borrow) = self.V[b2 as usize].overflowing_sub(self.V[b3 as usize]);
-                    self.V[b3 as usize] = result;
-                    self.V[0xF] = if borrow { 0 } else { 1 };
+                    //let (result, borrow) = self.V[b2 as usize].overflowing_sub(self.V[b3 as usize]);
+                    //self.V[b3 as usize] = result;
+                    //self.V[0xF] = if borrow { 0 } else { 1 };
+                    jit_compile_and_run!(self, display, opcode, CPU::jit_compile_8XY7, b3, b2);
                 }
                 18 => {
                     // 8XYE décale (shift) VX à gauche de 1 bit. VF est fixé à la valeur du bit de poids fort de VX avant le décalage.
-                    //println!("18");
-                    self.V[0xF] = (self.V[b3 as usize] >> 7) & 0x1;
-
-                    self.V[b3 as usize] = self.V[b3 as usize] << 1;
+                    //self.V[0xF] = (self.V[b3 as usize] >> 7) & 0x1;
+                    //self.V[b3 as usize] = self.V[b3 as usize] << 1;
+                    jit_compile_and_run!(self, display, opcode, CPU::jit_compile_8XYE, b3);
                 }
                 19 => {
                     // 9XY0 saute l'instruction suivante si VX et VY ne sont pas égaux.
-                    //println!("19");
-                    if self.V[b3 as usize] != self.V[b2 as usize] {
-                        self.pc += 2;
-                    }
+                    //if self.V[b3 as usize] != self.V[b2 as usize] {
+                    //    self.pc += 2;
+                    //}
+                    jit_compile_and_run!(self, display, opcode, CPU::jit_compile_9XY0, b3, b2);
                 }
                 20 => {
                     // ANNN affecte NNN à I.
-                    //println!("20");
-                    self.I = nnn;
+                    //self.I = nnn;
+                    jit_compile_and_run!(self, display, opcode, CPU::jit_compile_ANNN, nnn);
                 }
                 21 => {
                     // BNNN passe à l'adresse NNN + V0.
-                    //println!("21");
-                    self.pc = self.V[0] as u16 + nnn;
+                    //self.pc = self.V[0] as u16 + nnn;
+                    jit_compile_and_run!(self, display, opcode, CPU::jit_compile_BNNN, nnn);
                 }
                 22 => {
                     // CXNN définit VX à un nombre aléatoire inférieur à NN.
-                    //println!("22");
                     let r: u8 = random();
                     self.V[b3 as usize] = r & kk;
+                    //jit_compile_and_run!(self, display, opcode, CPU::jit_compile_CXNN, b3, kk);
                 }
                 23 => {
                     // DXYN dessine un sprite aux coordonnées (VX, VY).

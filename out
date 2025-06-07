@@ -1,0 +1,89 @@
+Game was loaded succesfully !
+Start Benchmark ...
+COMPILE ANNN
+COMPILE 2NNN
+COMPILE 6XNN
+COMPILE 6XNN
+COMPILE 00EE
+COMPILE 2NNN
+COMPILE 6XNN
+COMPILE 6XNN
+COMPILE 6XNN
+COMPILE 6XNN
+COMPILE 6XNN
+COMPILE 6XNN
+COMPILE 7XNN
+COMPILE 3XKK
+COMPILE 1NNN
+COMPILE 7XNN
+COMPILE 6XNN
+COMPILE 6XNN
+COMPILE 3XKK
+COMPILE 1NNN
+COMPILE CXNN
+random_byte called 0 times, value = 227
+COMPILE 4XKK
+COMPILE CXNN
+random_byte called 1 times, value = 68
+COMPILE 6XNN
+COMPILE 6XNN
+COMPILE 2NNN
+COMPILE ANNN
+COMPILE 6XNN
+COMPILE 4XKK
+COMPILE 4XKK
+COMPILE 4XKK
+COMPILE 3XKK
+COMPILE 1NNN
+COMPILE 1NNN
+COMPILE 3XKK
+COMPILE 7XNN
+COMPILE 1NNN
+COMPILE 2NNN
+COMPILE 8XY0
+COMPILE 3XKK
+COMPILE 7XNN
+COMPILE 2NNN
+COMPILE 6XNN
+COMPILE 6XNN
+COMPILE 3XKK
+COMPILE 1NNN
+COMPILE 7XNN
+COMPILE 4XKK
+COMPILE 9XY0
+COMPILE 1NNN
+COMPILE 1NNN
+V[4] after CXNN = 0random_byte called 2 times, value = 198
+ | asm v[x] = 64 | kk == 112
+V[3] after CXNN = 0random_byte called 3 times, value = 132
+ | asm v[x] = 0 | kk == 3
+V[4] after CXNN = 0random_byte called 4 times, value = 13
+ | asm v[x] = 0 | kk == 112
+V[3] after CXNN = 0random_byte called 5 times, value = 1
+ | asm v[x] = 1 | kk == 3
+V[4] after CXNN = 0random_byte called 6 times, value = 116
+ | asm v[x] = 112 | kk == 112
+V[3] after CXNN = 0random_byte called 7 times, value = 244
+ | asm v[x] = 0 | kk == 3
+V[4] after CXNN = 0random_byte called 8 times, value = 159
+ | asm v[x] = 16 | kk == 112
+V[3] after CXNN = 0random_byte called 9 times, value = 231
+ | asm v[x] = 3 | kk == 3
+V[4] after CXNN = 0random_byte called 10 times, value = 236
+ | asm v[x] = 96 | kk == 112
+V[3] after CXNN = 0random_byte called 11 times, value = 177
+ | asm v[x] = 1 | kk == 3
+V[4] after CXNN = 0random_byte called 12 times, value = 40
+ | asm v[x] = 32 | kk == 112
+V[3] after CXNN = 0random_byte called 13 times, value = 140
+ | asm v[x] = 0 | kk == 3
+V[4] after CXNN = 0random_byte called 14 times, value = 106
+ | asm v[x] = 96 | kk == 112
+V[3] after CXNN = 0random_byte called 15 times, value = 147
+ | asm v[x] = 3 | kk == 3
+V[4] after CXNN = 0random_byte called 16 times, value = 239
+ | asm v[x] = 96 | kk == 112
+V[3] after CXNN = 0random_byte called 17 times, value = 162
+ | asm v[x] = 2 | kk == 3
+Executed 30000 instructions in 14.982617857s
+Instructions per second: 2002.32

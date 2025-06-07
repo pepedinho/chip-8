@@ -1,7 +1,10 @@
+use std::sync::atomic::AtomicUsize;
+
 use dynasmrt::DynasmApi;
 use dynasmrt::DynasmLabelApi;
 use dynasmrt::{dynasm, x64::Assembler, AssemblyOffset};
 use memoffset::offset_of;
+use rand::random;
 
 use super::schema::CPU;
 
@@ -194,6 +197,224 @@ impl CPU {
             ; mov rax, 1
             ; ret
         );
+        s
+    }
+
+    pub fn jit_compile_8XY1(asm: &mut Assembler, x: u8, y: u8) -> AssemblyOffset {
+        let offset_v = offset_of!(CPU, V) as i32;
+
+        let s = asm.offset();
+
+        dynasm!(asm
+            ; mov al, BYTE [rdi + offset_v + x as i32]
+            ; or al,  BYTE [rdi + offset_v + y as i32]
+
+            ; mov BYTE [rdi + offset_v + x as i32], al
+
+            ; mov rax, 1
+            ; ret
+        );
+
+        s
+    }
+
+    pub fn jit_compile_8XY2(asm: &mut Assembler, x: u8, y: u8) -> AssemblyOffset {
+        let offset_v = offset_of!(CPU, V) as i32;
+
+        let s = asm.offset();
+
+        dynasm!(asm
+            ; mov al, BYTE [rdi + offset_v + x as i32]
+            ; and al, BYTE [rdi + offset_v + y as i32]
+
+            ; mov BYTE [rdi + offset_v + x as i32], al
+
+            ; mov rax, 1
+            ; ret
+        );
+
+        s
+    }
+
+    pub fn jit_compile_8XY3(asm: &mut Assembler, x: u8, y: u8) -> AssemblyOffset {
+        let offset_v = offset_of!(CPU, V) as i32;
+
+        let s = asm.offset();
+
+        dynasm!(asm
+            ; mov al, BYTE [rdi + offset_v + x as i32]
+            ; xor al, BYTE [rdi + offset_v + y as i32]
+
+            ; mov BYTE [rdi + offset_v + x as i32], al
+
+            ; mov rax, 1
+            ; ret
+        );
+
+        s
+    }
+
+    pub fn jit_compile_8XY4(asm: &mut Assembler, x: u8, y: u8) -> AssemblyOffset {
+        let offset_v = offset_of!(CPU, V) as i32;
+
+        let s = asm.offset();
+
+        dynasm!(asm
+            ; mov al, BYTE [rdi + offset_v + x as i32]
+            ; add al, BYTE [rdi + offset_v + y as i32]
+
+            ; mov BYTE [rdi + offset_v + x as i32], al
+
+            ; setc dl
+            ; mov BYTE [rdi + offset_v + 0xF], dl
+
+            ; mov rax, 1
+            ; ret
+        );
+
+        s
+    }
+
+    pub fn jit_compile_8XY5(asm: &mut Assembler, x: u8, y: u8) -> AssemblyOffset {
+        let offset_v = offset_of!(CPU, V) as i32;
+
+        let s = asm.offset();
+
+        dynasm!(asm
+            ; mov al, BYTE [rdi + offset_v + x as i32]
+            ; sub al, BYTE [rdi + offset_v + y as i32]
+
+            ; mov BYTE [rdi + offset_v + x as i32], al
+
+            ; setnc dl
+            ; mov BYTE [rdi + offset_v + 0xF], dl
+
+            ; mov rax, 1
+            ; ret
+        );
+
+        s
+    }
+
+    pub fn jit_compile_8XY6(asm: &mut Assembler, x: u8) -> AssemblyOffset {
+        let offset_v = offset_of!(CPU, V) as i32;
+
+        let s = asm.offset();
+
+        dynasm!(asm
+            ; mov al, BYTE [rdi + offset_v + x as i32]
+            ; and dl, 0
+            ; mov dl, al
+            ; and dl, 1
+            ; mov BYTE [rdi + offset_v + 0xF], dl
+
+            ; shr al, 1
+            ; mov BYTE [rdi + offset_v + x as i32], al
+
+            ; mov rax, 1
+            ; ret
+        );
+
+        s
+    }
+
+    pub fn jit_compile_8XY7(asm: &mut Assembler, x: u8, y: u8) -> AssemblyOffset {
+        let offset_v = offset_of!(CPU, V) as i32;
+
+        let s = asm.offset();
+
+        dynasm!(asm
+            ; mov al, BYTE [rdi + offset_v + y as i32]
+            ; sub al, BYTE [rdi + offset_v + x as i32]
+
+            ; mov BYTE [rdi + offset_v + x as i32], al
+
+            ; setnc dl
+            ; mov BYTE [rdi + offset_v + 0xF], dl
+
+            ; mov rax, 1
+            ; ret
+        );
+
+        s
+    }
+
+    pub fn jit_compile_8XYE(asm: &mut Assembler, x: u8) -> AssemblyOffset {
+        let offset_v = offset_of!(CPU, V) as i32;
+
+        let s = asm.offset();
+
+        dynasm!(asm
+            ; mov al, BYTE [rdi + offset_v + x as i32]
+
+            ; mov dl, al
+            ; shr al, 7
+            ; and al, 1
+            ; mov BYTE [rdi + offset_v + 0xF], al
+
+            ; shl dl, 1
+            ; mov BYTE [rdi + offset_v + x as i32], dl
+
+            ; mov rax, 1
+            ; ret
+        );
+
+        s
+    }
+
+    pub fn jit_compile_9XY0(asm: &mut Assembler, x: u8, y: u8) -> AssemblyOffset {
+        let offset_v = offset_of!(CPU, V) as i32;
+        let offset_pc = offset_of!(CPU, pc) as i32;
+
+        let s = asm.offset();
+
+        dynasm!(asm
+            ; movzx eax, BYTE [rdi + offset_v + x as i32]
+            ; mov dl, BYTE [rdi + offset_v + y as i32]
+            ; cmp al, dl
+            ; je >skip
+
+            ; add WORD [rdi + offset_pc], 2
+
+            ; skip:
+            ; mov rax, 1
+            ; ret
+        );
+
+        s
+    }
+
+    pub fn jit_compile_ANNN(asm: &mut Assembler, nnn: u16) -> AssemblyOffset {
+        let offset_i = offset_of!(CPU, I) as i32;
+
+        let s = asm.offset();
+
+        dynasm!(asm
+            ; mov WORD [rdi + offset_i], nnn as i16
+
+            ; mov rax, 1
+            ; ret
+        );
+
+        s
+    }
+
+    pub fn jit_compile_BNNN(asm: &mut Assembler, nnn: u16) -> AssemblyOffset {
+        let offset_v = offset_of!(CPU, V) as i32;
+        let offset_pc = offset_of!(CPU, pc) as i32;
+
+        let s = asm.offset();
+
+        dynasm!(asm
+            ; movzx ax, BYTE [rdi + offset_v]
+            ; add ax, nnn as i16
+
+            ; add WORD [rdi + offset_pc], ax
+
+            ; mov rax, 1
+            ; ret
+        );
+
         s
     }
 }
