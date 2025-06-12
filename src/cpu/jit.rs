@@ -417,4 +417,20 @@ impl CPU {
 
         s
     }
+
+    pub fn jit_compile_FX07(asm: &mut Assembler, x: u8) -> AssemblyOffset {
+        let offset_v = offset_of!(CPU, V) as i32;
+        let offset_gc = offset_of!(CPU, game_count) as i32;
+
+        let s = asm.offset();
+
+        dynasm!(asm
+            ; mov dl, BYTE [rdi + offset_gc]
+            ; mov BYTE [rdi + offset_v + x as i32], dl
+
+            ; mov rax, 1
+            ; ret
+        );
+        s
+    }
 }

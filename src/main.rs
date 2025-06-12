@@ -19,6 +19,8 @@ pub struct Config {
     pub debug: bool,
     #[arg(short, long)]
     pub bench: Option<u32>,
+    #[arg(short, long, default_value_t = false)]
+    pub headless: bool,
 }
 
 fn main() -> Result<(), String> {
@@ -65,7 +67,9 @@ fn main() -> Result<(), String> {
                 cpu.interpret(opcode, &j, &mut ctx);
             }
 
-            ctx.update_screen();
+            if !config.headless {
+                ctx.update_screen();
+            }
             cpu.countdown();
         }
         let elapsed = start.elapsed();

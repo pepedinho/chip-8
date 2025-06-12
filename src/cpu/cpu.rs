@@ -201,16 +201,15 @@ impl CPU {
                     // CXNN définit VX à un nombre aléatoire inférieur à NN.
                     let r: u8 = random();
                     self.V[b3 as usize] = r & kk;
-                    //jit_compile_and_run!(self, display, opcode, CPU::jit_compile_CXNN, b3, kk);
+                    // quand je tente de la coder en asm v[x] a une valeur aberante, dont je n'ai
+                    // pas reussi a trouver la cause pour l'instant
                 }
                 23 => {
                     // DXYN dessine un sprite aux coordonnées (VX, VY).
-                    //println!("23");
                     display.draw_screen(b1, b3, b2, self);
                 }
                 24 => {
                     // EX9E saute l'instruction suivante si la clé stockée dans VX est pressée.
-                    //println!("24");
                     let key = self.V[b3 as usize];
 
                     if display.keyboard.ispressed(key) {
@@ -219,7 +218,6 @@ impl CPU {
                 }
                 25 => {
                     // EXA1 saute l'instruction suivante si la clé stockée dans VX n'est pas pressée.
-                    //println!("25");
                     let key = self.V[b3 as usize];
 
                     if !display.keyboard.ispressed(key) {
@@ -228,8 +226,8 @@ impl CPU {
                 }
                 26 => {
                     // FX07 définit VX à la valeur de la temporisation.
-                    //println!("26");
-                    self.V[b3 as usize] = self.game_count;
+                    // self.V[b3 as usize] = self.game_count;
+                    jit_compile_and_run!(self, display, opcode, CPU::jit_compile_FX07, b3);
                 }
                 27 => {
                     // FX0A attend l'appui sur une touche et la stocke ensuite dans VX.
